@@ -4,7 +4,6 @@ from httpxthrottlecache import HttpxThrottleCache
 import httpxthrottlecache
 import os
 import logging
-import hishel
 logger=logging.getLogger(__name__)
 import email.utils
 import time 
@@ -54,8 +53,6 @@ async def test_stream_updates_progress(manager_cache: HttpxThrottleCache, tmp_pa
 
         if isinstance(client._transport, httpxthrottlecache.filecache.transport.CachingTransport):
             client._transport.transport = next_transport
-        elif isinstance(client._transport, hishel.AsyncCacheTransport):
-            client._transport._transport = next_transport
         else:
             raise AssertionError(f"Unexpected transport type: {type(client._transport)}")
 
@@ -161,8 +158,6 @@ def test_stream_updates_progress_sync(manager_cache: HttpxThrottleCache, tmp_pat
 
         if isinstance(client._transport, httpxthrottlecache.filecache.transport.CachingTransport):
             client._transport.transport = next_transport
-        elif isinstance(client._transport, hishel.CacheTransport):
-            client._transport._transport = next_transport
         else:
             raise AssertionError(f"Unexpected transport type: {type(client._transport)}")
 

@@ -4,7 +4,6 @@ from httpxthrottlecache import HttpxThrottleCache, EDGAR_CACHE_RULES
 import logging 
 import httpx
 import httpxthrottlecache
-import hishel
 
 logger = logging.getLogger(__name__ )
 logging.basicConfig(
@@ -12,7 +11,7 @@ logging.basicConfig(
     level=logging.INFO,
     datefmt='%Y-%m-%d %H:%M:%S')
 
-@pytest.fixture(params=["Hishel-File", "FileCache"], ids=["hishel", "filecache"])
+@pytest.fixture(params=["FileCache"], ids=["filecache"])
 def manager_cache(tmp_path_factory, request):
     user_agent = os.environ.get("EDGAR_IDENTITY", None)
     cache_dir = tmp_path_factory.mktemp("cache")
@@ -41,10 +40,6 @@ def mock_client(client):
 
     if isinstance(client._transport, httpxthrottlecache.filecache.transport.CachingTransport):
         client._transport.transport = next_transport
-    elif isinstance(client._transport, hishel.AsyncCacheTransport):
-        client._transport._transport = next_transport
-    elif isinstance(client._transport, hishel.CacheTransport):
-        client._transport._transport = next_transport
     elif isinstance(client._transport, httpxthrottlecache.ratelimiter.RateLimitingTransport):
         client._transport.handle_request = next_transport.handle_request
     elif isinstance(client._transport, httpxthrottlecache.ratelimiter.AsyncRateLimitingTransport):

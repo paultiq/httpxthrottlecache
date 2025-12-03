@@ -9,16 +9,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, AsyncGenerator, Callable, Generator, Literal, Mapping, Optional, Sequence, Union
 
-import hishel
 import httpx
 from httpx._types import ProxyTypes
 from pyrate_limiter import Duration, Limiter
 
-from .controller import get_cache_controller
 from .filecache.transport import CachingTransport
-from .key_generator import file_key_generator
 from .ratelimiter import AsyncRateLimitingTransport, RateLimitingTransport, create_rate_limiter
-from .serializer import JSONByteSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +29,6 @@ class HttpxThrottleCache:
     Rate Limiting is across all connections, whether via client & async_htp_client, using pyrate_limiter. For multiprocessing, use pyrate_limiters
     MultiprocessBucket or SqliteBucket w/ a file lock.
 
-    Caching is implemented via Hishel, which allows a variety of configurations, including AWS storage.
-
     This function is used for all synchronous requests.
     """
 
@@ -44,14 +38,12 @@ class HttpxThrottleCache:
 
     cache_rules: dict[str, dict[str, Union[bool, int]]] = field(default_factory=lambda: {})
     rate_limiter_enabled: bool = True
-    cache_mode: Literal[False, "Disabled", "Hishel-S3", "Hishel-File", "FileCache"] = "Hishel-File"
+    cache_mode: Literal[False, "Disabled", "FileCache"] = "FileCache"
     request_per_sec_limit: int = 10
     max_delay: Duration = field(default_factory=lambda: Duration.DAY)
     _client: Optional[httpx.Client] = None
 
     rate_limiter: Optional[Limiter] = None
-    s3_bucket: Optional[str] = None
-    s3_client: Optional[Any] = None
     user_agent: Optional[str] = None
     user_agent_factory: Optional[Callable[[], str]] = None
 
@@ -62,6 +54,9 @@ class HttpxThrottleCache:
     proxy: Optional[ProxyTypes] = None
 
     def __post_init__(self):
+        if self.cache_mode == "Hishel-File":
+            logger.debug("Hishel-File is deprecated and will be removed, due to breaking API changes")
+            self.cache_mode = "FileCache"
         self.cache_dir = Path(self.cache_dir) if isinstance(self.cache_dir, str) else self.cache_dir
         # self.lock = threading.Lock()
 
@@ -75,15 +70,14 @@ class HttpxThrottleCache:
 
         if self.cache_mode == "Disabled" or self.cache_mode is False:
             pass
-        elif self.cache_mode == "Hishel-S3":
-            if self.s3_bucket is None:
-                raise ValueError("s3_bucket must be provided if using Hishel-S3 storage")
-        else:  # Hishel-File or FileCache
+        elif self.cache_mode == "FileCache":
             if self.cache_dir is None:
                 raise ValueError(f"cache_dir must be provided if using a file based cache: {self.cache_mode}")
             else:
                 if not self.cache_dir.exists():
                     self.cache_dir.mkdir()
+        else:
+            raise ValueError(f"Unsupported cache_mode: {self.cache_mode}")
 
         logger.debug(
             "Initialized cache with cache_mode=%s, cache_dir=%s, rate_limiter_enabled=%s",
@@ -248,21 +242,7 @@ class HttpxThrottleCache:
             assert self.cache_dir is not None
             return CachingTransport(cache_dir=self.cache_dir, transport=next_transport, cache_rules=self.cache_rules)
         else:
-            # either Hishel-S3 or Hishel-File
-            assert self.cache_mode == "Hishel-File" or self.cache_mode == "Hishel-S3"
-            controller = get_cache_controller(key_generator=file_key_generator, cache_rules=self.cache_rules)
-
-            if self.cache_mode == "Hishel-S3":
-                assert self.s3_bucket is not None
-                storage = hishel.S3Storage(
-                    client=self.s3_client, bucket_name=self.s3_bucket, serializer=JSONByteSerializer()
-                )
-            else:
-                assert self.cache_mode == "Hishel-File"
-                assert self.cache_dir is not None
-                storage = hishel.FileStorage(base_path=Path(self.cache_dir), serializer=JSONByteSerializer())
-
-            return hishel.CacheTransport(transport=next_transport, storage=storage, controller=controller)
+            raise ValueError(f"Unsupported cache_mode: {self.cache_mode}")
 
     def _get_async_transport(
         self, bypass_cache: bool, httpx_transport_params: dict[str, Any]
@@ -286,21 +266,7 @@ class HttpxThrottleCache:
             assert self.cache_dir is not None
             return CachingTransport(cache_dir=self.cache_dir, transport=next_transport, cache_rules=self.cache_rules)  # pyright: ignore[reportArgumentType]
         else:
-            # either Hishel-S3 or Hishel-File
-            assert self.cache_mode == "Hishel-File" or self.cache_mode == "Hishel-S3"
-            controller = get_cache_controller(key_generator=file_key_generator, cache_rules=self.cache_rules)
-
-            if self.cache_mode == "Hishel-S3":
-                assert self.s3_bucket is not None
-                storage = hishel.AsyncS3Storage(
-                    client=self.s3_client, bucket_name=self.s3_bucket, serializer=JSONByteSerializer()
-                )
-            else:
-                assert self.cache_mode == "Hishel-File"
-                assert self.cache_dir is not None
-                storage = hishel.AsyncFileStorage(base_path=Path(self.cache_dir), serializer=JSONByteSerializer())
-
-            return hishel.AsyncCacheTransport(transport=next_transport, storage=storage, controller=controller)
+            raise ValueError(f"Unsupported cache_mode: {self.cache_mode}")
 
     def __enter__(self):
         return self

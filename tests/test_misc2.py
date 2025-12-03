@@ -5,14 +5,13 @@ from httpxthrottlecache import HttpxThrottleCache
 import httpxthrottlecache
 import os
 import logging
-import hishel
 logger=logging.getLogger(__name__)
 import email.utils
 import time 
 import asyncio
 
-def test_user_agent_factor():
-    htc = HttpxThrottleCache(cache_mode="Hishel-S3", s3_bucket="foo", user_agent_factory=lambda: "foo", rate_limiter_enabled=False)
+def test_user_agent_factor(tmp_path):
+    htc = HttpxThrottleCache(cache_mode="FileCache", cache_dir=tmp_path, user_agent_factory=lambda: "foo", rate_limiter_enabled=False)
 
     params = {}
     htc._populate_user_agent(params)
@@ -55,8 +54,6 @@ def test_no_ratelimit(manager_cache):
 
         if isinstance(client._transport, httpxthrottlecache.filecache.transport.CachingTransport):
             client._transport.transport = next_transport
-        elif isinstance(client._transport, hishel.CacheTransport):
-            client._transport._transport = next_transport
         else:
             raise AssertionError(f"Unexpected transport type: {type(client._transport)}")
         start = time.perf_counter()
@@ -104,8 +101,6 @@ async def test_no_ratelimit_async(manager_cache):
 
         if isinstance(client._transport, httpxthrottlecache.filecache.transport.CachingTransport):
             client._transport.transport = next_transport
-        elif isinstance(client._transport, hishel.AsyncCacheTransport):
-            client._transport._transport = next_transport
         else:
             raise AssertionError(f"Unexpected transport type: {type(client._transport)}")
         start = time.perf_counter()
@@ -128,8 +123,6 @@ def test_post_not_cached(manager_cache, monkeypatch):
 
         if isinstance(client._transport, httpxthrottlecache.filecache.transport.CachingTransport):
             client._transport.transport = next_transport
-        elif isinstance(client._transport, hishel.CacheTransport):
-            client._transport._transport = next_transport
         else:
             raise AssertionError(f"Unexpected transport type: {type(client._transport)}")
         
@@ -156,8 +149,6 @@ async def test_post_not_cached_async(manager_cache, monkeypatch):
 
         if isinstance(client._transport, httpxthrottlecache.filecache.transport.CachingTransport):
             client._transport.transport = next_transport
-        elif isinstance(client._transport, hishel.AsyncCacheTransport):
-            client._transport._transport = next_transport
         else:
             raise AssertionError(f"Unexpected transport type: {type(client._transport)}")
         
