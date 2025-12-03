@@ -58,7 +58,7 @@ async def test_nonedgar_query_string(manager_cache):
 
 @pytest.mark.asyncio
 async def test_nonedgar_cacheable(manager_cache):
-    """Demonstrates difference between caching methods: Hishel looks at TTL/max-age, file cache doesn't"""
+    """FileCache ignores response cache headers and uses client-provided cache rules"""
     url = "https://httpbingo.org/cache/60"
 
     async with manager_cache.async_http_client() as client:
@@ -148,7 +148,7 @@ async def test_mkdir():
 async def test_override_cache_rule(manager_cache):
 
     """
-        Hishel's default behavior kicks in
+        FileCache uses client-provided cache rules
     """
 
     url = "https://httpbingo.org/cache/60"
