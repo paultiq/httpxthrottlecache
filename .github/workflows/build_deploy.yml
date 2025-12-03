@@ -40,7 +40,6 @@ jobs:
           uv run pytest --ignore=tests/extras
       - name: Smoke Test Extras - Edgar and HTTP2
         run: |
-          uv pip install edgartools h2
           uv run pytest tests/extras/test_edgartools.py tests/extras/test_http2.py
       - name: Upload package to PyPI
         if: startsWith(github.ref, 'refs/tags/v')

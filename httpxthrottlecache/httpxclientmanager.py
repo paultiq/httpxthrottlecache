@@ -54,6 +54,9 @@ class HttpxThrottleCache:
     proxy: Optional[ProxyTypes] = None
 
     def __post_init__(self):
+        if self.cache_mode == "Hishel-File":
+            logger.debug("Hishel-File is deprecated and will be removed, due to breaking API changes")
+            self.cache_mode = "FileCache"
         self.cache_dir = Path(self.cache_dir) if isinstance(self.cache_dir, str) else self.cache_dir
         # self.lock = threading.Lock()
 
