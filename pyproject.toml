@@ -16,7 +16,7 @@ dependencies = [
   "aiofiles>=24.1.0",
   "filelock>=3.18.0",
   "httpx>=0.28.1",
-  "pyrate-limiter>=3.9.0",
+  "pyrate-limiter>=4.0.0",
 ]
 classifiers = [
     "Programming Language :: Python :: 3.10",
