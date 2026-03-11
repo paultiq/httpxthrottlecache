@@ -17,6 +17,27 @@ def test_user_agent_factor(tmp_path):
     htc._populate_user_agent(params)
     assert params["headers"]["User-Agent"] == "foo"
 
+
+def test_verify_passed_to_transport(tmp_path):
+    """Issue #37: verify parameter should be forwarded to transport"""
+    htc = HttpxThrottleCache(
+        cache_dir=tmp_path,
+        cache_mode="Disabled",
+        httpx_params={"verify": False, "http2": False},
+        rate_limiter_enabled=False,
+    )
+    transport_params = htc._get_httpx_transport_params(htc.httpx_params)
+    assert transport_params["verify"] is False
+
+    htc_default = HttpxThrottleCache(
+        cache_dir=tmp_path,
+        cache_mode="Disabled",
+        rate_limiter_enabled=False,
+    )
+    transport_params_default = htc_default._get_httpx_transport_params(htc_default.httpx_params)
+    assert transport_params_default["verify"] is True
+
+
 def test_no_ratelimit(manager_cache):
     htc = HttpxThrottleCache(cache_mode=manager_cache.cache_mode, cache_dir=manager_cache.cache_dir, user_agent_factory=lambda: "foo", rate_limiter_enabled=False)
     url = "https://example.com/file.bin"

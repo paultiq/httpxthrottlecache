@@ -162,8 +162,9 @@ class HttpxThrottleCache:
     def _get_httpx_transport_params(self, params: dict[str, Any]):
         http2 = params.get("http2", False)
         proxy = self.proxy
+        verify = params.get("verify", True)
 
-        return {"http2": http2, "proxy": proxy}
+        return {"http2": http2, "proxy": proxy, "verify": verify}
 
     @contextmanager
     def http_client(self, bypass_cache: bool = False, **kwargs: dict[str, Any]) -> Generator[httpx.Client, None, None]:
