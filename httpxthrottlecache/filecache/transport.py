@@ -3,11 +3,11 @@
 
 """
 
-import calendar
 import json
 import logging
 import os
 import time
+from email.utils import formatdate, parsedate_to_datetime
 from pathlib import Path
 from typing import Callable, Iterator, Optional, Tuple, Union
 from urllib.parse import quote, unquote
@@ -125,12 +125,12 @@ class _TeeCore:
         self.lock = FileLock(str(path) + ".lock") if locking else None
         self.fh = None
         if last_modified:
-            self.mtime = calendar.timegm(time.strptime(last_modified, "%a, %d %b %Y %H:%M:%S GMT"))
+            self.mtime = int(parsedate_to_datetime(last_modified).timestamp())
         else:
             self.mtime = None
 
         if access_date:
-            self.atime = calendar.timegm(time.strptime(access_date, "%a, %d %b %Y %H:%M:%S GMT"))
+            self.atime = int(parsedate_to_datetime(access_date).timestamp())
         else:
             self.atime = None  # pragma: no cover
 
@@ -193,12 +193,12 @@ class _AsyncTeeToDisk(httpx.AsyncByteStream):
         self.tmp = path.with_name(path.name + ".tmp")
         self.lock = AsyncFileLock(str(path) + ".lock") if locking else None
         if last_modified:
-            self.mtime = calendar.timegm(time.strptime(last_modified, "%a, %d %b %Y %H:%M:%S GMT"))
+            self.mtime = int(parsedate_to_datetime(last_modified).timestamp())
         else:
             self.mtime = None
 
         if access_date:
-            self.atime = calendar.timegm(time.strptime(access_date, "%a, %d %b %Y %H:%M:%S GMT"))
+            self.atime = int(parsedate_to_datetime(access_date).timestamp())
         else:
             self.atime = None  # pragma: no cover
 
@@ -252,8 +252,8 @@ class CachingTransport(httpx.BaseTransport, httpx.AsyncBaseTransport):
         Large files are streamed async, so the only blocking events here are for reading small(ish) files
         """
         meta = json.loads(path.with_suffix(path.suffix + ".meta").read_text())
-        date = time.strftime("%a, %d %b %Y %H:%M:%S GMT", time.gmtime(meta["fetched"]))
-        last_modified = time.strftime("%a, %d %b %Y %H:%M:%S GMT", time.gmtime(meta["origin_lm"]))
+        date = formatdate(timeval=meta["fetched"], usegmt=True)
+        last_modified = formatdate(timeval=meta["origin_lm"], usegmt=True)
 
         ct = meta.get("headers", {}).get("content-type", "application/octet-stream")
         ce = meta.get("headers", {}).get("content-encoding")
@@ -320,7 +320,7 @@ class CachingTransport(httpx.BaseTransport, httpx.AsyncBaseTransport):
             else:
                 lm = json.loads(path.with_suffix(path.suffix + ".meta").read_text()).get("origin_lm")
                 if lm:
-                    request.headers["If-Modified-Since"] = time.strftime("%a, %d %b %Y %H:%M:%S GMT", time.gmtime(lm))
+                    request.headers["If-Modified-Since"] = formatdate(timeval=lm, usegmt=True)
                     return None, path
                 else:
                     return None, None
