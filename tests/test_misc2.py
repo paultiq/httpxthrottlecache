@@ -109,6 +109,58 @@ async def test_no_ratelimit_async(manager_cache):
 
         assert (end-start) < 3
         
+def test_locale_independent_date_parsing(manager_cache):
+    """Regression test for #34 / edgartools#457: date parsing must not depend on system locale.
+
+    On non-English systems (e.g. Chinese, German), time.strptime would crash
+    parsing English day/month names like 'Fri' or 'Oct'. The fix uses
+    email.utils.parsedate_to_datetime which is locale-independent.
+    """
+    htc = HttpxThrottleCache(
+        cache_mode=manager_cache.cache_mode,
+        cache_dir=manager_cache.cache_dir,
+        cache_rules={".*": {".*": True}},
+        user_agent_factory=lambda: "test",
+        rate_limiter_enabled=False,
+    )
+    url = "https://example.com/locale-test"
+
+    date_headers = [
+        ("Fri, 10 Oct 2025 11:57:10 GMT", "Mon, 06 Oct 2025 08:00:00 GMT"),
+        ("Sun, 01 Jan 2023 00:00:00 GMT", "Sat, 31 Dec 2022 23:59:59 GMT"),
+        ("Thu, 15 Feb 2024 12:30:45 GMT", "Wed, 14 Feb 2024 10:00:00 GMT"),
+    ]
+
+    for date_str, lm_str in date_headers:
+        chunks = [b"hello world"]
+        total = len(b"hello world")
+
+        def handler(req):
+            return Response(
+                200,
+                headers={
+                    "Content-Length": str(total),
+                    "Last-Modified": lm_str,
+                    "Date": date_str,
+                },
+                stream=httpx.ByteStream(b"hello world"),
+                request=req,
+            )
+
+        with htc.http_client() as client:
+            next_transport = httpx.MockTransport(handler)
+            if isinstance(client._transport, httpxthrottlecache.filecache.transport.CachingTransport):
+                client._transport.transport = next_transport
+            else:
+                raise AssertionError(f"Unexpected transport type: {type(client._transport)}")
+
+            r = client.get(url)
+            assert r.status_code == 200
+
+            r2 = client.get(url)
+            assert r2.headers.get("x-cache") == "HIT"
+
+
 def test_post_not_cached(manager_cache, monkeypatch):
     calls = 0
     url = "https://example.com/post"

@@ -366,7 +366,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "edgartools" },
+    { name = "edgartools", marker = "platform_python_implementation == 'CPython'" },
     { name = "h2" },
     { name = "pre-commit-uv" },
     { name = "pylint" },
@@ -390,7 +390,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "edgartools", specifier = ">=4.34.1" },
+    { name = "edgartools", marker = "platform_python_implementation == 'CPython'", specifier = ">=4.34.1" },
     { name = "h2", specifier = ">=4.3.0" },
     { name = "pre-commit-uv", specifier = ">=4.1.4" },
     { name = "pylint", specifier = ">=3.3.8" },
