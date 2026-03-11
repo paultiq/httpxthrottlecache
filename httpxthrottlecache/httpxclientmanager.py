@@ -11,7 +11,7 @@ from typing import Any, AsyncGenerator, Callable, Generator, Literal, Mapping, O
 
 import httpx
 from httpx._types import ProxyTypes
-from pyrate_limiter import Duration, Limiter
+from pyrate_limiter import Limiter
 
 from .filecache.transport import CachingTransport
 from .ratelimiter import AsyncRateLimitingTransport, RateLimitingTransport, create_rate_limiter
@@ -40,7 +40,6 @@ class HttpxThrottleCache:
     rate_limiter_enabled: bool = True
     cache_mode: Literal[False, "Disabled", "FileCache"] = "FileCache"
     request_per_sec_limit: int = 10
-    max_delay: Duration = field(default_factory=lambda: Duration.DAY)
     _client: Optional[httpx.Client] = None
 
     rate_limiter: Optional[Limiter] = None
@@ -62,7 +61,7 @@ class HttpxThrottleCache:
 
         if self.rate_limiter_enabled and self.rate_limiter is None:
             self.rate_limiter = create_rate_limiter(
-                requests_per_second=self.request_per_sec_limit, max_delay=self.max_delay
+                requests_per_second=self.request_per_sec_limit
             )
 
         if (self.cache_mode != "Disabled" or self.cache_mode is False) and not self.cache_rules:
@@ -162,8 +161,9 @@ class HttpxThrottleCache:
     def _get_httpx_transport_params(self, params: dict[str, Any]):
         http2 = params.get("http2", False)
         proxy = self.proxy
+        verify = params.get("verify", True)
 
-        return {"http2": http2, "proxy": proxy}
+        return {"http2": http2, "proxy": proxy, "verify": verify}
 
     @contextmanager
     def http_client(self, bypass_cache: bool = False, **kwargs: dict[str, Any]) -> Generator[httpx.Client, None, None]:
@@ -191,8 +191,8 @@ class HttpxThrottleCache:
             self._client.close()
             self._client = None
 
-    def update_rate_limiter(self, requests_per_second: int, max_delay: Duration = Duration.DAY):
-        self.rate_limiter = create_rate_limiter(requests_per_second=requests_per_second, max_delay=Duration.DAY)
+    def update_rate_limiter(self, requests_per_second: int):
+        self.rate_limiter = create_rate_limiter(requests_per_second=requests_per_second)
 
         self.close()
 

@@ -6,22 +6,14 @@ import logging
 from typing import Any
 
 import httpx
-from pyrate_limiter import Duration, InMemoryBucket, Limiter, Rate
+from pyrate_limiter import Duration, Limiter, Rate
 
 logger = logging.getLogger(__name__)
 
 
-def create_rate_limiter(requests_per_second: int, max_delay: Duration | int = Duration.DAY) -> Limiter:
+def create_rate_limiter(requests_per_second: int) -> Limiter:
     rate = Rate(requests_per_second, Duration.SECOND)
-    rate_limits = [rate]
-
-    base_bucket = InMemoryBucket(rate_limits)
-
-    bucket = base_bucket
-
-    limiter = Limiter(bucket, max_delay=max_delay, raise_when_fail=False, retry_until_max_delay=True)
-
-    return limiter
+    return Limiter(rate)
 
 
 class RateLimitingTransport(httpx.HTTPTransport):
@@ -33,9 +25,7 @@ class RateLimitingTransport(httpx.HTTPTransport):
         # using a constant string for item name means that the same
         # rate is applied to all requests.
         if self.limiter:
-            while not self.limiter.try_acquire(__name__):
-                logger.debug("Lock acquisition timed out, retrying")  # pragma: no cover
-
+            self.limiter.try_acquire(__name__)
             logger.debug("Acquired lock")
 
         logger.info("Making HTTP Request %s", request)
@@ -49,9 +39,7 @@ class AsyncRateLimitingTransport(httpx.AsyncHTTPTransport):
 
     async def handle_async_request(self, request: httpx.Request, **kwargs: dict[str, Any]) -> httpx.Response:
         if self.limiter:
-            while not await self.limiter.try_acquire_async(__name__):
-                logger.debug("Lock acquisition timed out, retrying")  # pragma: no cover
-
+            await self.limiter.try_acquire_async(__name__)
             logger.debug("Acquired lock")
 
         logger.info("Making HTTP Request %s", request)
