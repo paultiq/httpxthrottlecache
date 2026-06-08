@@ -26,7 +26,7 @@ s3 = boto3.client(
     ),
 )
 
-BUCKET = "hishel-cache-test"
+BUCKET = "large-cache-test"
 
 
 def clear_cache():

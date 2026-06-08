@@ -1,8 +1,12 @@
-import asyncio, email.utils, time, httpx, pytest
+import asyncio
+import email.utils
+import time
+import httpx2
+import pytest
 from httpxthrottlecache import HttpxThrottleCache
 import datetime
 
-from httpx import Response
+from httpx2 import Response
 
 @pytest.mark.asyncio
 async def test_304_revalidate_serves_cached(manager_cache: HttpxThrottleCache, tmp_path, monkeypatch):
@@ -17,7 +21,7 @@ async def test_304_revalidate_serves_cached(manager_cache: HttpxThrottleCache, t
     monkeypatch.setattr(time, "time", lambda: t0)
     body1 = b"abc"
 
-    class _Chunks(httpx.AsyncByteStream):
+    class _Chunks(httpx2.AsyncByteStream):
         def __init__(self, b): self.b=b
         async def __aiter__(self): yield self.b
         async def aclose(self): pass
@@ -33,7 +37,7 @@ async def test_304_revalidate_serves_cached(manager_cache: HttpxThrottleCache, t
         }, stream=_Chunks(body1), request=req)
 
     async with manager_cache.async_http_client() as client:
-        mt = httpx.MockTransport(handler)
+        mt = httpx2.MockTransport(handler)
         setattr(client._transport, "transport" if hasattr(client._transport, "transport") else "_transport", mt)
         client._transport.cache_rules = manager_cache.cache_rules
         # 1) prime cache
@@ -78,7 +82,7 @@ async def test_200_revalidate_refreshes_cache(manager_cache: HttpxThrottleCache,
     body1 = b"abc"
     body2 = b"DEF"
 
-    class _Chunks(httpx.AsyncByteStream):
+    class _Chunks(httpx2.AsyncByteStream):
         def __init__(self, b): self.b=b
         async def __aiter__(self): yield self.b
         async def aclose(self): pass
@@ -101,7 +105,7 @@ async def test_200_revalidate_refreshes_cache(manager_cache: HttpxThrottleCache,
             }, stream=_Chunks(body2), request=req)
 
     async with manager_cache.async_http_client() as client:
-        mt = httpx.MockTransport(handler)
+        mt = httpx2.MockTransport(handler)
         setattr(client._transport, "transport" if hasattr(client._transport, "transport") else "_transport", mt)
 
         # prime cache
@@ -132,7 +136,7 @@ def test_304_revalidate_serves_cached_sync(manager_cache: HttpxThrottleCache, tm
     monkeypatch.setattr(time, "time", lambda: t0)
     body1 = b"abc"
 
-    class _Chunks(httpx.ByteStream):
+    class _Chunks(httpx2.ByteStream):
         def __init__(self, b): 
             self.b=b
             super().__init__(self)
@@ -154,7 +158,7 @@ def test_304_revalidate_serves_cached_sync(manager_cache: HttpxThrottleCache, tm
         }, stream=_Chunks(body1), request=req)
 
     with manager_cache.http_client() as client:
-        mt = httpx.MockTransport(handler)
+        mt = httpx2.MockTransport(handler)
         setattr(client._transport, "transport" if hasattr(client._transport, "transport") else "_transport", mt)
         client._transport.cache_rules = manager_cache.cache_rules
         # 1) prime cache

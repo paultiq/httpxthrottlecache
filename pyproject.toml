@@ -15,7 +15,7 @@ keywords = [
 dependencies = [
   "aiofiles>=24.1.0",
   "filelock>=3.18.0",
-  "httpx>=0.28.1",
+  "httpx2>=2.3.0",
   "pyrate-limiter>=4.0.0",
 ]
 classifiers = [
@@ -30,7 +30,6 @@ classifiers = [
 
 [dependency-groups]
 dev = [
-  "edgartools>=4.34.1; platform_python_implementation == 'CPython'",
   "h2>=4.3.0",
   "pre-commit-uv>=4.1.4",
   "pylint>=3.3.8",
@@ -42,6 +41,10 @@ dev = [
   "pytest-xdist>=3.8.0",
   "ruff>=0.12.8",
   "tqdm>=4.67.1",
+]
+
+edgartest = [
+  "edgartools>=4.34.1; platform_python_implementation == 'CPython'",
 ]
 
 [project.urls]
@@ -203,7 +206,6 @@ ignore = [
   "W291",
   "E501",
   "S608",
-  "PD901",
   "C901",
   "S101"
 ]
@@ -222,3 +224,8 @@ retries = 1
 #retry_delay = 4
 cumulative_timing = false
 #retry_outcome = "rerun"
+
+
+
+#[tool.uv]
+#exclude-newer = "2 weeks"

@@ -1,5 +1,6 @@
-import httpx, pytest
-from httpx import Response
+import httpx2
+import pytest
+from httpx2 import Response
 from httpxthrottlecache import HttpxThrottleCache
 import httpxthrottlecache
 import os
@@ -26,7 +27,7 @@ async def test_stream_updates_progress(manager_cache: HttpxThrottleCache, tmp_pa
     expected = b"".join(chunks)
     out = tmp_path / "out.bin"
 
-    class _Chunks(httpx.AsyncByteStream):
+    class _Chunks(httpx2.AsyncByteStream):
         def __init__(self, cs): self._cs = cs
         async def __aiter__(self):
             for c in self._cs:
@@ -49,7 +50,7 @@ async def test_stream_updates_progress(manager_cache: HttpxThrottleCache, tmp_pa
         )
 
     async with manager_cache.async_http_client() as client:
-        next_transport = httpx.MockTransport(handler)
+        next_transport = httpx2.MockTransport(handler)
 
         if isinstance(client._transport, httpxthrottlecache.filecache.transport.CachingTransport):
             client._transport.transport = next_transport
@@ -79,7 +80,7 @@ async def test_stream_updates_progress(manager_cache: HttpxThrottleCache, tmp_pa
 async def test_cache_stale_is_not_hit(manager_cache, tmp_path, monkeypatch):
     url, calls = "https://example.com/file.bin", 0
     start = time.time()
-    class _Chunks(httpx.AsyncByteStream):
+    class _Chunks(httpx2.AsyncByteStream):
         def __init__(self, cs): 
             self.cs=cs
         async def __aiter__(self):
@@ -97,7 +98,7 @@ async def test_cache_stale_is_not_hit(manager_cache, tmp_path, monkeypatch):
 
     manager_cache.cache_rules = {"example.com": {"/file.bin": 3600}}
     async with manager_cache.async_http_client() as client:
-        mt = httpx.MockTransport(handler)
+        mt = httpx2.MockTransport(handler)
         if hasattr(client._transport, "transport"): 
             client._transport.transport = mt
         elif hasattr(client._transport, "_transport"): 
@@ -128,7 +129,7 @@ def test_stream_updates_progress_sync(manager_cache: HttpxThrottleCache, tmp_pat
     expected = b"".join(chunks)
     out = tmp_path / "out.bin"
 
-    class _Chunks(httpx.ByteStream):
+    class _Chunks(httpx2.ByteStream):
         def __init__(self, cs): 
             self._cs = cs
             super().__init__(self)
@@ -154,7 +155,7 @@ def test_stream_updates_progress_sync(manager_cache: HttpxThrottleCache, tmp_pat
         )
 
     with manager_cache.http_client() as client:
-        next_transport = httpx.MockTransport(handler)
+        next_transport = httpx2.MockTransport(handler)
 
         if isinstance(client._transport, httpxthrottlecache.filecache.transport.CachingTransport):
             client._transport.transport = next_transport
@@ -184,7 +185,7 @@ def test_cache_stale_is_not_hit_sync(manager_cache, tmp_path, monkeypatch):
     url, calls = "https://example.com/file.bin", 0
     start = time.time()
 
-    class _Chunks(httpx.ByteStream):
+    class _Chunks(httpx2.ByteStream):
         def __init__(self, cs): 
             self.cs=cs
             super().__init__(self)
@@ -204,7 +205,7 @@ def test_cache_stale_is_not_hit_sync(manager_cache, tmp_path, monkeypatch):
 
     manager_cache.cache_rules = {"example.com": {"/file.bin": 3600}}
     with manager_cache.http_client() as client:
-        mt = httpx.MockTransport(handler)
+        mt = httpx2.MockTransport(handler)
         if hasattr(client._transport, "transport"): 
             client._transport.transport = mt
         elif hasattr(client._transport, "_transport"): 
