@@ -27,6 +27,7 @@ repos:
         language: node
         pass_filenames: true
         additional_dependencies: ["pyright"]
+        exclude: '^benchmarks/'
   - repo: local
     hooks:
       - id: pylint

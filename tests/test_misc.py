@@ -1,7 +1,7 @@
 from httpxthrottlecache import __version__, HttpxThrottleCache, EDGAR_CACHE_RULES
 import re
 import pytest
-import httpx 
+import httpx2
 import asyncio
 
 import logging
@@ -13,7 +13,7 @@ def test_version():
 
 @pytest.mark.asyncio
 async def test_provide_my_own(manager_nocache):
-    async with httpx.AsyncClient() as myclient:
+    async with httpx2.AsyncClient() as myclient:
         url = "https://www.sec.gov/files/company_tickers.json"
 
             

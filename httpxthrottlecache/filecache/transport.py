@@ -10,7 +10,7 @@ import os
 import time
 from email.utils import formatdate, parsedate_to_datetime
 from pathlib import Path
-from typing import Callable, Iterator, Optional, Tuple, Union
+from typing import Callable, Iterator, Optional, Tuple, Union, cast
 from urllib.parse import quote, unquote
 
 import aiofiles
@@ -212,6 +212,7 @@ class _AsyncTeeToDisk(httpx2.AsyncByteStream):
         if self.lock:
             await self.lock.acquire()
         try:
+            self.tmp.parent.mkdir(parents=True, exist_ok=True)
             async with aiofiles.open(self.tmp, "wb") as f:
                 async for chunk in self.resp.aiter_raw():
                     await f.write(chunk)
@@ -224,14 +225,14 @@ class _AsyncTeeToDisk(httpx2.AsyncByteStream):
                 }
                 await m.write(json.dumps({"fetched": self.atime, "origin_lm": self.mtime, "headers": headers}))
         finally:
-            if self.lock:
+            if self.lock and getattr(self.lock, "is_locked", False):
                 await self.lock.release()
 
     async def aclose(self):
         try:
             await self.resp.aclose()
         finally:
-            if self.lock:
+            if self.lock and getattr(self.lock, "is_locked", False):
                 await self.lock.release()
 
 
@@ -294,7 +295,13 @@ class CachingTransport(httpx2.BaseTransport, httpx2.AsyncBaseTransport):
                 request=req,
             )
 
-    def _cache_miss_response(self, req: httpx2.Request, net: httpx2.Response, path: Path, tee_factory):
+    def _cache_miss_response(
+        self,
+        req: httpx2.Request,
+        net: httpx2.Response,
+        path: Path,
+        tee_factory: Callable[..., Union[httpx2.SyncByteStream, httpx2.AsyncByteStream]],
+    ):
         if net.status_code != 200:
             return net
 
@@ -356,14 +363,17 @@ class CachingTransport(httpx2.BaseTransport, httpx2.AsyncBaseTransport):
         return self._cache_miss_response(request, net, path, _TeeToDisk)
 
     async def handle_async_request(self, request: httpx2.Request) -> httpx2.Response:
+        # self.transport holds an async transport in the async path; the attribute is
+        # typed sync (httpx2.HTTPTransport) for the common case, so cast for async use.
+        transport = cast(httpx2.AsyncBaseTransport, self.transport)
         if request.method != "GET":
-            return await self.transport.handle_async_request(request)  # type: ignore[attr-defined]
+            return await transport.handle_async_request(request)
 
         response, path = self.return_if_fresh(request)
         if response:
             return response
 
-        net: httpx2.Response = await self.transport.handle_async_request(request)
+        net: httpx2.Response = await transport.handle_async_request(request)
         if net.status_code == 304:
             assert path is not None  # must be true
             logger.info("304 for %s", request)

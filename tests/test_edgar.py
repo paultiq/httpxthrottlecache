@@ -5,7 +5,7 @@ import time
 import asyncio
 import pytest
 import logging
-import httpx
+import httpx2
 from httpxthrottlecache import HttpxThrottleCache
 from conftest import mock_client
 logger=logging.getLogger(__name__)
@@ -195,7 +195,7 @@ def test_non_edgar_url(manager_cache: HttpxThrottleCache):
         second_date = response.headers["date"]
         assert r2.status_code == 200, r2.status_code
 
-        assert (r2.headers.get("x-cache") == "MISS" or r2.headers.get("x-cache") is None) or (r2.r2.extensions.get("from_cache") is None or r2.extensions.get("from_cache") == False)
+        assert (r2.headers.get("x-cache") == "MISS" or r2.headers.get("x-cache") is None) or (r2.extensions.get("from_cache") is None or r2.extensions.get("from_cache") == False)
 
     # Not cached
 

@@ -1,8 +1,9 @@
 import pytest
 import os
+import copy
 from httpxthrottlecache import HttpxThrottleCache, EDGAR_CACHE_RULES
 import logging 
-import httpx
+import httpx2
 import httpxthrottlecache
 
 logger = logging.getLogger(__name__ )
@@ -14,10 +15,13 @@ logging.basicConfig(
 @pytest.fixture(params=["FileCache"], ids=["filecache"])
 def manager_cache(tmp_path_factory, request):
     user_agent = os.environ.get("EDGAR_IDENTITY", None)
+
+    if user_agent is None:
+        raise RuntimeError("EDGAR_IDENTITY not set, can't run tests")
     cache_dir = tmp_path_factory.mktemp("cache")
 
     logger.debug("Test cache_dir=%s", cache_dir)
-    return HttpxThrottleCache(user_agent=user_agent, cache_dir=cache_dir, cache_mode=request.param, cache_rules=EDGAR_CACHE_RULES)
+    return HttpxThrottleCache(user_agent=user_agent, cache_dir=cache_dir, cache_mode=request.param, cache_rules=copy.deepcopy(EDGAR_CACHE_RULES))
 
 @pytest.fixture
 def manager_nocache():
@@ -29,14 +33,14 @@ def manager_nocache():
 
 def mock_client(client):
 
-    class _MockAsyncStream(httpx.AsyncByteStream):
+    class _MockAsyncStream(httpx2.AsyncByteStream):
         async def __aiter__(self): yield b"ok"
         async def aclose(self): pass
 
     async def _handler(req): 
-        return httpx.Response(200, headers={"date":"Mon, 01 Jan 2024 00:00:00 GMT"}, request=req, stream=_MockAsyncStream())
+        return httpx2.Response(200, headers={"date":"Mon, 01 Jan 2024 00:00:00 GMT"}, request=req, stream=_MockAsyncStream())
 
-    next_transport = httpx.MockTransport(_handler)
+    next_transport = httpx2.MockTransport(_handler)
 
     if isinstance(client._transport, httpxthrottlecache.filecache.transport.CachingTransport):
         client._transport.transport = next_transport

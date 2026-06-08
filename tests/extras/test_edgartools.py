@@ -14,6 +14,10 @@ def test_edgartools_1(tmp_path, caplog):
 
     from edgar import Company, core
 
+    # edgartools pins the httpxthrottlecache logger to WARNING (edgar/core.py), which
+    # suppresses the INFO lines this test looks for. Re-enable capture for that logger.
+    caplog.set_level(logging.INFO, logger="httpxthrottlecache")
+
     logger.info("edgartools using get_edgar_data_directory=%s", core.get_edgar_data_directory())
     company = Company("MSFT")
 

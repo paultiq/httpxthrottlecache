@@ -405,7 +405,6 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "edgartools", marker = "platform_python_implementation == 'CPython'" },
     { name = "h2" },
     { name = "pre-commit-uv" },
     { name = "pylint" },
@@ -418,6 +417,9 @@ dev = [
     { name = "ruff" },
     { name = "tqdm" },
 ]
+edgartest = [
+    { name = "edgartools", marker = "platform_python_implementation == 'CPython'" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -429,7 +431,6 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "edgartools", marker = "platform_python_implementation == 'CPython'", specifier = ">=4.34.1" },
     { name = "h2", specifier = ">=4.3.0" },
     { name = "pre-commit-uv", specifier = ">=4.1.4" },
     { name = "pylint", specifier = ">=3.3.8" },
@@ -442,6 +443,7 @@ dev = [
     { name = "ruff", specifier = ">=0.12.8" },
     { name = "tqdm", specifier = ">=4.67.1" },
 ]
+edgartest = [{ name = "edgartools", marker = "platform_python_implementation == 'CPython'", specifier = ">=4.34.1" }]
 
 [[package]]
 name = "humanize"

@@ -1,6 +1,7 @@
 from httpxthrottlecache import HttpxThrottleCache
-import httpx, pytest
-from httpx import Response
+import httpx2
+import pytest
+from httpx2 import Response
 from httpxthrottlecache import HttpxThrottleCache
 import httpxthrottlecache
 import os
@@ -44,7 +45,7 @@ def test_no_ratelimit(manager_cache):
     dt = email.utils.formatdate(usegmt=True)
     chunks = [b"x" * (1 * 1)] * 4
     total = sum(map(len, chunks))
-    class _Chunks(httpx.ByteStream):
+    class _Chunks(httpx2.ByteStream):
         def __init__(self, cs): 
             self._cs = cs
             super().__init__(self)
@@ -71,7 +72,7 @@ def test_no_ratelimit(manager_cache):
         )
 
     with htc.http_client() as client:
-        next_transport = httpx.MockTransport(handler)
+        next_transport = httpx2.MockTransport(handler)
 
         if isinstance(client._transport, httpxthrottlecache.filecache.transport.CachingTransport):
             client._transport.transport = next_transport
@@ -91,7 +92,7 @@ async def test_no_ratelimit_async(manager_cache):
     dt = email.utils.formatdate(usegmt=True)
     chunks = [b"x" * (1 * 1)] * 4
     total = sum(map(len, chunks))
-    class _Chunks(httpx.ByteStream):
+    class _Chunks(httpx2.ByteStream):
         def __init__(self, cs): 
             self._cs = cs
             super().__init__(self)
@@ -118,7 +119,7 @@ async def test_no_ratelimit_async(manager_cache):
         )
 
     async with htc.async_http_client() as client:
-        next_transport = httpx.MockTransport(handler)
+        next_transport = httpx2.MockTransport(handler)
 
         if isinstance(client._transport, httpxthrottlecache.filecache.transport.CachingTransport):
             client._transport.transport = next_transport
@@ -164,12 +165,12 @@ def test_locale_independent_date_parsing(manager_cache):
                     "Last-Modified": lm_str,
                     "Date": date_str,
                 },
-                stream=httpx.ByteStream(b"hello world"),
+                stream=httpx2.ByteStream(b"hello world"),
                 request=req,
             )
 
         with htc.http_client() as client:
-            next_transport = httpx.MockTransport(handler)
+            next_transport = httpx2.MockTransport(handler)
             if isinstance(client._transport, httpxthrottlecache.filecache.transport.CachingTransport):
                 client._transport.transport = next_transport
             else:
@@ -189,9 +190,9 @@ def test_post_not_cached(manager_cache, monkeypatch):
     def handler(req):
         nonlocal calls
         calls += 1
-        return httpx.Response(200, content=b"ok", request=req)
+        return httpx2.Response(200, content=b"ok", request=req)
 
-    next_transport = httpx.MockTransport(handler)
+    next_transport = httpx2.MockTransport(handler)
     with manager_cache.http_client() as client:
 
         if isinstance(client._transport, httpxthrottlecache.filecache.transport.CachingTransport):
@@ -215,9 +216,9 @@ async def test_post_not_cached_async(manager_cache, monkeypatch):
     def handler(req):
         nonlocal calls
         calls += 1
-        return httpx.Response(200, content=b"ok", request=req)
+        return httpx2.Response(200, content=b"ok", request=req)
 
-    next_transport = httpx.MockTransport(handler)
+    next_transport = httpx2.MockTransport(handler)
     async with manager_cache.async_http_client() as client:
 
         if isinstance(client._transport, httpxthrottlecache.filecache.transport.CachingTransport):
