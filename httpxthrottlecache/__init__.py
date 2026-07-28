@@ -1,7 +1,8 @@
+from ._compat import HTTPX_IMPL, httpx
 from ._version import __version__
 from .httpxclientmanager import HttpxThrottleCache
 
-__all__ = ["HttpxThrottleCache", "__version__"]
+__all__ = ["HTTPX_IMPL", "HttpxThrottleCache", "__version__", "httpx"]
 
 
 EDGAR_CACHE_RULES = {

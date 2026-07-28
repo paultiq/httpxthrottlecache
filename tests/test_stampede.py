@@ -1,6 +1,6 @@
 import pytest
-import httpx2
-from httpx2 import Response
+from httpxthrottlecache._compat import httpx
+Response = httpx.Response
 import email
 import time
 import asyncio
@@ -16,7 +16,7 @@ async def test_cache_stampede(manager_cache: HttpxThrottleCache, monkeypatch):
     ttl = 1
     manager_cache.cache_rules = {"example.com": {"/file.bin": 5}}  # force stale without monkeypatching time
 
-    class _Chunks(httpx2.AsyncByteStream): 
+    class _Chunks(httpx.AsyncByteStream): 
         def __init__(self, cs): 
             self.cs=cs
 
@@ -37,7 +37,7 @@ async def test_cache_stampede(manager_cache: HttpxThrottleCache, monkeypatch):
     
     async with manager_cache.async_http_client() as client:
         
-        mock = httpx2.MockTransport(handler)
+        mock = httpx.MockTransport(handler)
         if hasattr(client._transport, "transport"): 
             client._transport.transport = mock
         elif hasattr(client._transport, "_transport"): 
@@ -59,7 +59,7 @@ def test_cache_notreallystampede_warmed_first(manager_cache: HttpxThrottleCache,
     ttl = 1
     manager_cache.cache_rules = {"example.com": {"/file.bin": 5}}  # force stale without monkeypatching time
 
-    class _Chunks(httpx2.ByteStream): 
+    class _Chunks(httpx.ByteStream): 
         def __init__(self, cs): 
             self.cs=cs
             super().__init__(self)
@@ -81,7 +81,7 @@ def test_cache_notreallystampede_warmed_first(manager_cache: HttpxThrottleCache,
     
     with manager_cache.http_client() as client:
         
-        mock = httpx2.MockTransport(handler)
+        mock = httpx.MockTransport(handler)
         if hasattr(client._transport, "transport"): 
             client._transport.transport = mock
         elif hasattr(client._transport, "_transport"): 
@@ -104,7 +104,7 @@ async def test_cache_different_requests(manager_cache: HttpxThrottleCache, monke
     manager_cache.cache_rules = {"example.com": {"/file.bin": 5}}  # force stale without monkeypatching time
     url = "https://example.com/file.bin"
 
-    class _Chunks(httpx2.AsyncByteStream): 
+    class _Chunks(httpx.AsyncByteStream): 
         def __init__(self, cs): 
             self.cs=cs
 
@@ -125,7 +125,7 @@ async def test_cache_different_requests(manager_cache: HttpxThrottleCache, monke
     
     async with manager_cache.async_http_client() as client:
         
-        mock = httpx2.MockTransport(handler)
+        mock = httpx.MockTransport(handler)
         if hasattr(client._transport, "transport"): 
             client._transport.transport = mock
         elif hasattr(client._transport, "_transport"): 

@@ -10,10 +10,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, AsyncGenerator, Callable, Generator, Literal, Mapping, Optional, Sequence, Union
 
-import httpx2
-from httpx2._types import ProxyTypes
 from pyrate_limiter import Limiter
 
+from ._compat import HTTPX_IMPL, ProxyTypes, httpx
 from .filecache.transport import CachingTransport
 from .ratelimiter import AsyncRateLimitingTransport, RateLimitingTransport, create_rate_limiter
 
@@ -25,7 +24,7 @@ HTTP2 = importlib.util.find_spec("h2") is not None
 @dataclass
 class HttpxThrottleCache:
     """
-    Implements a rate limited, optional-cached HTTPX wrapper that returns client() (httpx2.Client) or async_http_client() (httpx2.AsyncClient).
+    Implements a rate limited, optional-cached HTTPX wrapper that returns client() (httpx.Client) or async_http_client() (httpx.AsyncClient).
 
     Rate Limiting is across all connections, whether via client & async_htp_client, using pyrate_limiter. For multiprocessing, use pyrate_limiters
     MultiprocessBucket or SqliteBucket w/ a file lock.
@@ -41,7 +40,7 @@ class HttpxThrottleCache:
     rate_limiter_enabled: bool = True
     cache_mode: Literal[False, "Disabled", "FileCache", "Hishel-File"] = "FileCache"
     request_per_sec_limit: int = 10
-    _client: Optional[httpx2.Client] = None
+    _client: Optional[httpx.Client] = None
 
     rate_limiter: Optional[Limiter] = None
     user_agent: Optional[str] = None
@@ -108,7 +107,7 @@ class HttpxThrottleCache:
         self,
         *,
         urls: Sequence[str] | Mapping[str, Path],
-        _client_mocker: Optional[Callable[[httpx2.AsyncClient], httpx2.AsyncClient]] = None,
+        _client_mocker: Optional[Callable[[httpx.AsyncClient], httpx.AsyncClient]] = None,
     ):
         """
         Fetch a batch of URLs concurrently and either return their content in-memory
@@ -167,12 +166,12 @@ class HttpxThrottleCache:
     def _normalize_timeout(self, params: dict[str, Any]) -> None:
         """Accept a foreign httpx.Timeout without requiring the caller to change."""
         t = params.get("timeout")
-        if t is not None and not isinstance(t, (int, float, httpx2.Timeout)) and hasattr(t, "connect"):
-            warnings.warn(f"{type(t)} passed: migrate to httpx2.Timeout", DeprecationWarning, stacklevel=2)
-            params["timeout"] = httpx2.Timeout(connect=t.connect, read=t.read, write=t.write, pool=t.pool)
+        if t is not None and not isinstance(t, (int, float, httpx.Timeout)) and hasattr(t, "connect"):
+            warnings.warn(f"{type(t)} passed: migrate to {HTTPX_IMPL}.Timeout", DeprecationWarning, stacklevel=2)
+            params["timeout"] = httpx.Timeout(connect=t.connect, read=t.read, write=t.write, pool=t.pool)
 
     @contextmanager
-    def http_client(self, bypass_cache: bool = False, **kwargs: dict[str, Any]) -> Generator[httpx2.Client, None, None]:
+    def http_client(self, bypass_cache: bool = False, **kwargs: dict[str, Any]) -> Generator[httpx.Client, None, None]:
         """Provides and reuses a client. Does not close.
         bypass_cache and kwargs are ignored if the client is cached
         """
@@ -191,7 +190,7 @@ class HttpxThrottleCache:
                     params["transport"] = self._get_transport(
                         bypass_cache=bypass_cache, httpx_transport_params=self._get_httpx_transport_params(params)
                     )
-                    self._client = httpx2.Client(**params)
+                    self._client = httpx.Client(**params)
 
         yield self._client
 
@@ -205,7 +204,7 @@ class HttpxThrottleCache:
 
         self.close()
 
-    def _client_factory_async(self, bypass_cache: bool, **kwargs: dict[str, Any]) -> httpx2.AsyncClient:
+    def _client_factory_async(self, bypass_cache: bool, **kwargs: dict[str, Any]) -> httpx.AsyncClient:
         params = self.httpx_params.copy()
         params.update(**kwargs)
         self._populate_user_agent(params)
@@ -214,12 +213,12 @@ class HttpxThrottleCache:
             bypass_cache=bypass_cache, httpx_transport_params=self._get_httpx_transport_params(params)
         )
 
-        return httpx2.AsyncClient(**params)
+        return httpx.AsyncClient(**params)
 
     @asynccontextmanager
     async def async_http_client(
-        self, client: Optional[httpx2.AsyncClient] = None, bypass_cache: bool = False, **kwargs: dict[str, Any]
-    ) -> AsyncGenerator[httpx2.AsyncClient, None]:
+        self, client: Optional[httpx.AsyncClient] = None, bypass_cache: bool = False, **kwargs: dict[str, Any]
+    ) -> AsyncGenerator[httpx.AsyncClient, None]:
         """
         Async callers should create a single client for a group of tasks, rather than creating a single client per task.
 
@@ -233,17 +232,17 @@ class HttpxThrottleCache:
         async with self._client_factory_async(bypass_cache=bypass_cache, **kwargs) as client:
             yield client
 
-    def _get_transport(self, bypass_cache: bool, httpx_transport_params: dict[str, Any]) -> httpx2.BaseTransport:
+    def _get_transport(self, bypass_cache: bool, httpx_transport_params: dict[str, Any]) -> httpx.BaseTransport:
         """
         Constructs the Transport Chain:
 
-        Caching Transport (if enabled) => Rate Limiting Transport (if enabled) => httpx2.HTTPTransport
+        Caching Transport (if enabled) => Rate Limiting Transport (if enabled) => httpx.HTTPTransport
         """
         if self.rate_limiter_enabled:
             assert self.rate_limiter is not None
             next_transport = RateLimitingTransport(self.rate_limiter, **httpx_transport_params)
         else:
-            next_transport = httpx2.HTTPTransport(**httpx_transport_params)
+            next_transport = httpx.HTTPTransport(**httpx_transport_params)
 
         if bypass_cache or self.cache_mode == "Disabled" or self.cache_mode is False:
             logger.info("Cache is DISABLED, rate limiting only")
@@ -256,18 +255,18 @@ class HttpxThrottleCache:
 
     def _get_async_transport(
         self, bypass_cache: bool, httpx_transport_params: dict[str, Any]
-    ) -> httpx2.AsyncBaseTransport:
+    ) -> httpx.AsyncBaseTransport:
         """
         Constructs the Transport Chain:
 
-        Caching Transport (if enabled) => Rate Limiting Transport (if enabled) => httpx2.HTTPTransport
+        Caching Transport (if enabled) => Rate Limiting Transport (if enabled) => httpx.HTTPTransport
         """
 
         if self.rate_limiter_enabled:
             assert self.rate_limiter is not None
             next_transport = AsyncRateLimitingTransport(self.rate_limiter, **httpx_transport_params)
         else:
-            next_transport = httpx2.AsyncHTTPTransport(**httpx_transport_params)
+            next_transport = httpx.AsyncHTTPTransport(**httpx_transport_params)
 
         if bypass_cache or self.cache_mode == "Disabled" or self.cache_mode is False:
             logger.info("Cache is DISABLED, rate limiting only")

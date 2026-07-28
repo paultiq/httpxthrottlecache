@@ -24,7 +24,7 @@ jobs:
         with:
           fetch-depth: 0 # needed for tags for dunamai
       - name: Install uv
-        uses: astral-sh/setup-uv@v8.2.0
+        uses: astral-sh/setup-uv@v9.0.0
         with:
           enable-cache: true
       - uses: actions/setup-python@v6.2.0

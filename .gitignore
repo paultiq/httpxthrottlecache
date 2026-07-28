@@ -209,3 +209,4 @@ __marimo__/
 xdg_cache
 
 _*cache
+.oldvenv/Scripts/ruff.exe

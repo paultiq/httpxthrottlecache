@@ -1,7 +1,7 @@
 # https://github.com/monokal/docker-tinyproxy
 # docker run -d --name=tinyproxy -p 6666:8888 --env FilterDefaultDeny=No  monokal/tinyproxy:latest ANY
 # curl -v --proxy http://127.0.0.1:6666 http://httpbingo.org/get
-import httpx2
+from httpxthrottlecache._compat import httpx
 import os
 import pytest
 from httpxthrottlecache import HttpxThrottleCache
@@ -20,7 +20,7 @@ requires_proxy = pytest.mark.skipif(
 @requires_proxy
 def test_proxy_http():
 
-    with httpx2.Client() as client:
+    with httpx.Client() as client:
         response = client.get(url)
 
         assert response.status_code == 200
