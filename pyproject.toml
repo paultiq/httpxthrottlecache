@@ -15,7 +15,6 @@ keywords = [
 dependencies = [
   "aiofiles>=24.1.0",
   "filelock>=3.18.0",
-  "httpx2>=2.3.0",
   "pyrate-limiter>=4.0.0",
 ]
 classifiers = [
@@ -27,6 +26,15 @@ classifiers = [
     "Programming Language :: Python :: Implementation :: PyPy",
 ]
 
+
+[project.optional-dependencies]
+httpx2 = [
+  "httpx2>=2.3.0",
+]
+
+httpx = [
+  "httpx==0.28.1",
+]
 
 [dependency-groups]
 dev = [

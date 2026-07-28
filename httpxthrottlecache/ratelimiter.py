@@ -5,8 +5,9 @@ To control rate limit across multiple processes, see https://pyratelimiter.readt
 import logging
 from typing import Any
 
-import httpx2
 from pyrate_limiter import Duration, Limiter, Rate
+
+from ._compat import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -16,12 +17,12 @@ def create_rate_limiter(requests_per_second: int) -> Limiter:
     return Limiter(rate)
 
 
-class RateLimitingTransport(httpx2.HTTPTransport):
+class RateLimitingTransport(httpx.HTTPTransport):
     def __init__(self, limiter: Limiter, **kwargs: dict[str, Any]):
         super().__init__(**kwargs)  # pyright: ignore[reportArgumentType]
         self.limiter = limiter
 
-    def handle_request(self, request: httpx2.Request, **kwargs: dict[str, Any]) -> httpx2.Response:
+    def handle_request(self, request: httpx.Request, **kwargs: dict[str, Any]) -> httpx.Response:
         # using a constant string for item name means that the same
         # rate is applied to all requests.
         if self.limiter:
@@ -32,12 +33,12 @@ class RateLimitingTransport(httpx2.HTTPTransport):
         return super().handle_request(request, **kwargs)
 
 
-class AsyncRateLimitingTransport(httpx2.AsyncHTTPTransport):
+class AsyncRateLimitingTransport(httpx.AsyncHTTPTransport):
     def __init__(self, limiter: Limiter, **kwargs: dict[str, Any]):
         super().__init__(**kwargs)  # pyright: ignore[reportArgumentType]
         self.limiter = limiter
 
-    async def handle_async_request(self, request: httpx2.Request, **kwargs: dict[str, Any]) -> httpx2.Response:
+    async def handle_async_request(self, request: httpx.Request, **kwargs: dict[str, Any]) -> httpx.Response:
         if self.limiter:
             await self.limiter.try_acquire_async(__name__)
             logger.debug("Acquired lock")

@@ -27,12 +27,16 @@ jobs:
         include:
         # test oldest & latest versions against ubuntu
         # and one version against windows and macos
-        - { os: ubuntu-latest, python-version: "3.10" }
-        - { os: ubuntu-latest, python-version: *latest }
-        - { os: ubuntu-latest, python-version: "3.14t" }
-        - { os: ubuntu-latest, python-version: "pypy3.11" }
-        - { os: windows-latest, python-version: *latest }
-        - { os: macos-latest, python-version: *latest }
+        # full matrix runs the recommended httpx2 extra;
+        # the httpx extra is tested at the oldest & latest python versions
+        - { os: ubuntu-latest, python-version: "3.10", http-extra: httpx2 }
+        - { os: ubuntu-latest, python-version: "3.10", http-extra: httpx }
+        - { os: ubuntu-latest, python-version: *latest, http-extra: httpx2 }
+        - { os: ubuntu-latest, python-version: *latest, http-extra: httpx }
+        - { os: ubuntu-latest, python-version: "3.14t", http-extra: httpx2 }
+        - { os: ubuntu-latest, python-version: "pypy3.11", http-extra: httpx2 }
+        - { os: windows-latest, python-version: *latest, http-extra: httpx2 }
+        - { os: macos-latest, python-version: *latest, http-extra: httpx2 }
     environment: test
     permissions:
       contents: write
@@ -46,12 +50,12 @@ jobs:
           python-version: ${{ matrix.python-version }}
           allow-prereleases: true
       - name: Install uv
-        uses: astral-sh/setup-uv@v8.2.0
+        uses: astral-sh/setup-uv@v9.0.0
         with:
           enable-cache: true
           python-version: ${{ matrix.python-version }}
-      - name: Install dependencies 
-        run: uv sync
+      - name: Install dependencies
+        run: uv sync --extra ${{ matrix.http-extra }}
       - name: Run tests with coverage and Build
         env:
           COVERAGE_PROCESS_START: ${{ github.workspace }}/.coveragerc
@@ -59,12 +63,12 @@ jobs:
           uv run pytest --verbose --cov --cov-report=term-missing --ignore=tests/extras
           uv build
       - name: Smoke Test Extras - Edgar and HTTP2
-        if: ${{ matrix.python-version == env.LATEST_PY_VERSION && matrix.os == 'ubuntu-latest' }}
+        if: ${{ matrix.python-version == env.LATEST_PY_VERSION && matrix.os == 'ubuntu-latest' && matrix.http-extra == 'httpx2' }}
         run: |
-          uv sync --group edgartest
+          uv sync --extra ${{ matrix.http-extra }} --group edgartest
           uv run pytest tests/extras/test_edgartools.py tests/extras/test_http2.py
       - name: Test Proxy
-        if: ${{ matrix.python-version == env.LATEST_PY_VERSION && matrix.os == 'ubuntu-latest' }}
+        if: ${{ matrix.python-version == env.LATEST_PY_VERSION && matrix.os == 'ubuntu-latest' && matrix.http-extra == 'httpx2' }}
         run: |
           docker run -d --name tinyproxy -p 6666:8888 -e ALLOW=0.0.0.0/0 monokal/tinyproxy:latest ANY
           export HTTP_PROXY=http://127.0.0.1:6666
@@ -74,7 +78,7 @@ jobs:
           uv run pytest tests/extras/test_proxy.py tests/extras/test_http2.py
 
       - name: Python Coverage Comment if main
-        if: ${{ github.ref == 'refs/heads/main' && matrix.python-version == env.LATEST_PY_VERSION && matrix.os == 'ubuntu-latest' }}
+        if: ${{ github.ref == 'refs/heads/main' && matrix.python-version == env.LATEST_PY_VERSION && matrix.os == 'ubuntu-latest' && matrix.http-extra == 'httpx2' }}
         uses: py-cov-action/python-coverage-comment-action@v3.23
         with:
           GITHUB_TOKEN: ${{ github.token }}

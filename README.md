@@ -8,6 +8,28 @@ HTTPX Wrapper with Rate Limiting and Caching Transports.
 [![Coverage badge](https://github.com/paultiq/httpxthrottlecache/raw/python-coverage-comment-action-data/badge.svg)](https://github.com/paultiq/httpxthrottlecache/tree/python-coverage-comment-action-data)
 
 
+# Installation
+
+httpxthrottlecache does not depend on an HTTP client directly. Install it with one of two extras, which selects the client:
+
+```sh
+pip install 'httpxthrottlecache[httpx2]'  # recommended
+```
+
+or
+
+```sh
+pip install 'httpxthrottlecache[httpx]'
+```
+
+[httpx2](https://pypi.org/project/httpx2/) is a maintained fork of httpx and is the recommended option. The `httpx` extra pins httpx 0.28.1, the final release of the original, no-longer-maintained package.
+
+Upgrading from an earlier version: httpx2 is no longer installed automatically, so install one of the extras above.
+
+If both libraries are installed, httpx2 is used. `httpxthrottlecache.HTTPX_IMPL` reports which one is active.
+
+For development, set up the environment with `uv sync --extra httpx2`.
+
 # Introduction
 
 The goal of this project is a combination of convenience and as a demonstration of how to assemble HTTPX Transports in different combinations. 

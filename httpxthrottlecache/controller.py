@@ -35,4 +35,3 @@ def get_rule_for_request(
         return is_cacheable
 
     return None
-

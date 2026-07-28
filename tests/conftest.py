@@ -3,7 +3,7 @@ import os
 import copy
 from httpxthrottlecache import HttpxThrottleCache, EDGAR_CACHE_RULES
 import logging 
-import httpx2
+from httpxthrottlecache import httpx
 import httpxthrottlecache
 
 logger = logging.getLogger(__name__ )
@@ -33,14 +33,14 @@ def manager_nocache():
 
 def mock_client(client):
 
-    class _MockAsyncStream(httpx2.AsyncByteStream):
+    class _MockAsyncStream(httpx.AsyncByteStream):
         async def __aiter__(self): yield b"ok"
         async def aclose(self): pass
 
     async def _handler(req): 
-        return httpx2.Response(200, headers={"date":"Mon, 01 Jan 2024 00:00:00 GMT"}, request=req, stream=_MockAsyncStream())
+        return httpx.Response(200, headers={"date":"Mon, 01 Jan 2024 00:00:00 GMT"}, request=req, stream=_MockAsyncStream())
 
-    next_transport = httpx2.MockTransport(_handler)
+    next_transport = httpx.MockTransport(_handler)
 
     if isinstance(client._transport, httpxthrottlecache.filecache.transport.CachingTransport):
         client._transport.transport = next_transport

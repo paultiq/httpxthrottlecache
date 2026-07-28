@@ -24,14 +24,14 @@ jobs:
         with:
           fetch-depth: 0 # needed for tags for dunamai
       - name: Install uv
-        uses: astral-sh/setup-uv@v8.2.0
+        uses: astral-sh/setup-uv@v9.0.0
         with:
           enable-cache: true
       - uses: actions/setup-python@v6.2.0
         with:
           python-version: "3.10"
       - name: Install dependencies
-        run: uv sync
+        run: uv sync --extra httpx2
       - name: Build package
         run: |
           uv build
@@ -40,7 +40,7 @@ jobs:
           uv run pytest --ignore=tests/extras
       - name: Smoke Test Extras - Edgar and HTTP2
         run: |
-          uv sync --group edgartest
+          uv sync --extra httpx2 --group edgartest
           uv run pytest tests/extras/test_edgartools.py tests/extras/test_http2.py
       - name: Upload package to PyPI
         if: startsWith(github.ref, 'refs/tags/v')

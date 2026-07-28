@@ -14,9 +14,9 @@ from typing import Callable, Iterator, Optional, Tuple, Union, cast
 from urllib.parse import quote, unquote
 
 import aiofiles
-import httpx2
 from filelock import AsyncFileLock, FileLock
 
+from .._compat import httpx
 from ..controller import get_rule_for_request
 
 logger = logging.getLogger(__name__)
@@ -26,7 +26,7 @@ class AlreadyLockedError(Exception):
     pass
 
 
-class DualFileStream(httpx2.SyncByteStream, httpx2.AsyncByteStream):
+class DualFileStream(httpx.SyncByteStream, httpx.AsyncByteStream):
     def __init__(
         self,
         path: Path,
@@ -121,7 +121,7 @@ class FileCache:
 
 
 class _TeeCore:
-    def __init__(self, resp: httpx2.Response, path: Path, locking: bool, last_modified: str, access_date: str):
+    def __init__(self, resp: httpx.Response, path: Path, locking: bool, last_modified: str, access_date: str):
         assert path is not None
 
         self.resp = resp
@@ -171,8 +171,8 @@ class _TeeCore:
                 self.lock.release()
 
 
-class _TeeToDisk(httpx2.SyncByteStream):
-    def __init__(self, resp: httpx2.Response, path: Path, locking: bool, last_modified: str, access_date: str) -> None:
+class _TeeToDisk(httpx.SyncByteStream):
+    def __init__(self, resp: httpx.Response, path: Path, locking: bool, last_modified: str, access_date: str) -> None:
         self.core = _TeeCore(resp, path, locking, last_modified, access_date)
 
     def __iter__(self) -> Iterator[bytes]:
@@ -192,8 +192,8 @@ class _TeeToDisk(httpx2.SyncByteStream):
             self.core.finalize()
 
 
-class _AsyncTeeToDisk(httpx2.AsyncByteStream):
-    def __init__(self, resp: httpx2.Response, path: Path, locking: bool, last_modified: str, access_date: str):
+class _AsyncTeeToDisk(httpx.AsyncByteStream):
+    def __init__(self, resp: httpx.Response, path: Path, locking: bool, last_modified: str, access_date: str):
         self.resp = resp
         self.path = path
         self.tmp = path.with_name(path.name + ".tmp")
@@ -236,24 +236,24 @@ class _AsyncTeeToDisk(httpx2.AsyncByteStream):
                 await self.lock.release()
 
 
-class CachingTransport(httpx2.BaseTransport, httpx2.AsyncBaseTransport):
+class CachingTransport(httpx.BaseTransport, httpx.AsyncBaseTransport):
     cache_rules: dict[str, dict[str, Union[bool, int]]]
     streaming_cutoff: int = 8 * 1024 * 1024
 
-    transport: httpx2.HTTPTransport
+    transport: httpx.HTTPTransport
     _cache: FileCache
 
     def __init__(
         self,
         cache_dir: Union[str, Path],
         cache_rules: dict[str, dict[str, Union[bool, int]]],
-        transport: Optional[httpx2.BaseTransport] = None,
+        transport: Optional[httpx.BaseTransport] = None,
     ):
         self._cache = FileCache(cache_dir=cache_dir, locking=True)
-        self.transport = transport or httpx2.HTTPTransport()
+        self.transport = transport or httpx.HTTPTransport()
         self.cache_rules = cache_rules
 
-    def _cache_hit_response(self, req: httpx2.Request, path: Path, status_code: int = 200):
+    def _cache_hit_response(self, req: httpx.Request, path: Path, status_code: int = 200):
         """
         TODO: More carefully consider async here. read_text, read_bytes both are blocking.
 
@@ -280,7 +280,7 @@ class CachingTransport(httpx2.BaseTransport, httpx2.AsyncBaseTransport):
 
         if size < self.streaming_cutoff:
             # If the file is small, just read it and return it
-            return httpx2.Response(
+            return httpx.Response(
                 status_code=status_code,
                 headers=headers,
                 content=path.read_bytes(),
@@ -288,7 +288,7 @@ class CachingTransport(httpx2.BaseTransport, httpx2.AsyncBaseTransport):
             )
         else:
             # If the file is large, stream it
-            return httpx2.Response(
+            return httpx.Response(
                 status_code=status_code,
                 headers=headers,
                 stream=DualFileStream(path),
@@ -297,10 +297,10 @@ class CachingTransport(httpx2.BaseTransport, httpx2.AsyncBaseTransport):
 
     def _cache_miss_response(
         self,
-        req: httpx2.Request,
-        net: httpx2.Response,
+        req: httpx.Request,
+        net: httpx.Response,
         path: Path,
-        tee_factory: Callable[..., Union[httpx2.SyncByteStream, httpx2.AsyncByteStream]],
+        tee_factory: Callable[..., Union[httpx.SyncByteStream, httpx.AsyncByteStream]],
     ):
         if net.status_code != 200:
             return net
@@ -311,7 +311,7 @@ class CachingTransport(httpx2.BaseTransport, httpx2.AsyncBaseTransport):
             if k.lower() not in ("transfer-encoding",)  # "content-encoding", "content-length", "transfer-encoding")
         ]
         miss_headers.append(("x-cache", "MISS"))
-        return httpx2.Response(
+        return httpx.Response(
             status_code=net.status_code,
             headers=miss_headers,
             stream=tee_factory(
@@ -321,7 +321,7 @@ class CachingTransport(httpx2.BaseTransport, httpx2.AsyncBaseTransport):
             extensions={**net.extensions, "decode_content": False},
         )
 
-    def return_if_fresh(self, request: httpx2.Request) -> Tuple[Optional[httpx2.Response], Optional[Path]]:
+    def return_if_fresh(self, request: httpx.Request) -> Tuple[Optional[httpx.Response], Optional[Path]]:
         host = request.url.host
         path = request.url.path
         query = request.url.query.decode() if request.url.query else ""
@@ -341,7 +341,7 @@ class CachingTransport(httpx2.BaseTransport, httpx2.AsyncBaseTransport):
         else:
             return None, None
 
-    def handle_request(self, request: httpx2.Request) -> httpx2.Response:
+    def handle_request(self, request: httpx.Request) -> httpx.Response:
         if request.method != "GET":
             return self.transport.handle_request(request)
 
@@ -362,10 +362,10 @@ class CachingTransport(httpx2.BaseTransport, httpx2.AsyncBaseTransport):
         path = self._cache.to_path(host, path, query)
         return self._cache_miss_response(request, net, path, _TeeToDisk)
 
-    async def handle_async_request(self, request: httpx2.Request) -> httpx2.Response:
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
         # self.transport holds an async transport in the async path; the attribute is
-        # typed sync (httpx2.HTTPTransport) for the common case, so cast for async use.
-        transport = cast(httpx2.AsyncBaseTransport, self.transport)
+        # typed sync (httpx.HTTPTransport) for the common case, so cast for async use.
+        transport = cast(httpx.AsyncBaseTransport, self.transport)
         if request.method != "GET":
             return await transport.handle_async_request(request)
 
@@ -373,7 +373,7 @@ class CachingTransport(httpx2.BaseTransport, httpx2.AsyncBaseTransport):
         if response:
             return response
 
-        net: httpx2.Response = await transport.handle_async_request(request)
+        net: httpx.Response = await transport.handle_async_request(request)
         if net.status_code == 304:
             assert path is not None  # must be true
             logger.info("304 for %s", request)
