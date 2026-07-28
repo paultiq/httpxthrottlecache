@@ -4,13 +4,14 @@
 
 | Name                                      |    Stmts |     Miss |   Cover |   Missing |
 |------------------------------------------ | -------: | -------: | ------: | --------: |
-| httpxthrottlecache/\_\_init\_\_.py        |        4 |        0 |    100% |           |
+| httpxthrottlecache/\_\_init\_\_.py        |        5 |        0 |    100% |           |
+| httpxthrottlecache/\_compat.py            |       13 |        7 |     46% |     18-25 |
 | httpxthrottlecache/\_version.py           |        3 |        0 |    100% |           |
 | httpxthrottlecache/controller.py          |       21 |        0 |    100% |           |
 | httpxthrottlecache/filecache/transport.py |      225 |       20 |     91% |37-38, 41-46, 53-58, 236, 240, 243-244, 291, 340 |
-| httpxthrottlecache/httpxclientmanager.py  |      158 |       10 |     94% |58-59, 78, 88, 105, 150, 171-172, 255, 279 |
+| httpxthrottlecache/httpxclientmanager.py  |      157 |       10 |     94% |57-58, 77, 87, 104, 149, 170-171, 254, 278 |
 | httpxthrottlecache/ratelimiter.py         |       28 |        0 |    100% |           |
-|                                 **TOTAL** |  **439** |   **30** | **93%** |           |
+|                                 **TOTAL** |  **452** |   **37** | **92%** |           |
 
 
 ## Setup coverage badge
