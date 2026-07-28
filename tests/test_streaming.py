@@ -1,4 +1,4 @@
-from httpxthrottlecache._compat import httpx
+from httpxthrottlecache import httpx
 import pytest
 Response = httpx.Response
 from httpxthrottlecache import HttpxThrottleCache

@@ -1,5 +1,5 @@
 import pytest
-from httpxthrottlecache._compat import httpx
+from httpxthrottlecache import httpx
 Response = httpx.Response
 import email
 import time

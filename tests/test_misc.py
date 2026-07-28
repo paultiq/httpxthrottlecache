@@ -1,7 +1,7 @@
 from httpxthrottlecache import __version__, HttpxThrottleCache, EDGAR_CACHE_RULES
 import re
 import pytest
-from httpxthrottlecache._compat import httpx
+from httpxthrottlecache import httpx
 import asyncio
 
 import logging

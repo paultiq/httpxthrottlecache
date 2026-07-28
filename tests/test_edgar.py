@@ -5,7 +5,7 @@ import time
 import asyncio
 import pytest
 import logging
-from httpxthrottlecache._compat import httpx
+from httpxthrottlecache import httpx
 from httpxthrottlecache import HttpxThrottleCache
 from conftest import mock_client
 logger=logging.getLogger(__name__)

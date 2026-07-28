@@ -1,7 +1,7 @@
 import asyncio
 import email.utils
 import time
-from httpxthrottlecache._compat import httpx
+from httpxthrottlecache import httpx
 import pytest
 from httpxthrottlecache import HttpxThrottleCache
 import datetime

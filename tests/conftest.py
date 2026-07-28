@@ -3,7 +3,7 @@ import os
 import copy
 from httpxthrottlecache import HttpxThrottleCache, EDGAR_CACHE_RULES
 import logging 
-from httpxthrottlecache._compat import httpx
+from httpxthrottlecache import httpx
 import httpxthrottlecache
 
 logger = logging.getLogger(__name__ )
