@@ -116,7 +116,7 @@ class FileCache:
         age: int = round(time.time() - float(fetched))
         if age < 0:
             # Per RFC 9111: apparent_age = max(0, response_time - date_value);
-            # Negative ages can occur due to a lagging local clock, log accordingly. 
+            # Negative ages can occur due to a lagging local clock, log accordingly.
             logger.debug("Negative age (%s) detected: local clock may be behind origin (%s)", age, path)
             age = 0
         logger.info("file is %s seconds old, policy allows caching for up to %s", age, cached)
