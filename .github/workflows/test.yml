@@ -32,8 +32,8 @@ jobs:
         - { os: ubuntu-latest, python-version: "3.10", http-extra: httpx2 }
         - { os: ubuntu-latest, python-version: "3.10", http-extra: httpx }
         - { os: ubuntu-latest, python-version: *latest, http-extra: httpx2 }
-        - { os: ubuntu-latest, python-version: *latest, http-extra: httpx }
         - { os: ubuntu-latest, python-version: "3.14t", http-extra: httpx2 }
+        - { os: ubuntu-latest, python-version: "3.15", http-extra: httpx2 }
         - { os: ubuntu-latest, python-version: "pypy3.11", http-extra: httpx2 }
         - { os: windows-latest, python-version: *latest, http-extra: httpx2 }
         - { os: macos-latest, python-version: *latest, http-extra: httpx2 }
