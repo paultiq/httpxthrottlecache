@@ -178,3 +178,127 @@ def test_304_revalidate_serves_cached_sync(manager_cache: HttpxThrottleCache, tm
 
             assert r1.content==r2.content
         assert calls == 2  # second network round-trip for 304
+
+
+@pytest.mark.asyncio
+async def test_origin_clock_ahead_serves_cache_instead_of_raising(
+    manager_cache: HttpxThrottleCache, tmp_path, monkeypatch
+):
+    """An entry whose `fetched` came from an origin clock AHEAD of ours must not raise.
+
+    `fetched` is the origin's `Date` header (it becomes `_TeeCore.atime`), not the local
+    clock, so on a machine running behind the origin `time.time() - fetched` is negative.
+    The entry is not corrupt — it was just downloaded — so the freshest possible reading
+    (age 0) is the truthful one, and the cache serves it.
+
+    Only int-valued (TTL) rules reach the age computation; `True` rules short-circuit
+    above it. That is why this went unnoticed: it needs a TTL rule *and* a slow clock.
+    """
+    calls = 0
+    url = "https://example.com/file.bin"
+    skew, ttl = 120, 3600  # origin runs 120s ahead of us; entry well inside its TTL
+
+    manager_cache.cache_rules = {"example.com": {"/file.bin": ttl}}
+    dt = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=datetime.timezone.utc)
+    t0 = dt.timestamp()
+    monkeypatch.setattr(time, "time", lambda: t0)  # our clock: frozen, and behind the origin
+    body = b"abc"
+
+    class _Chunks(httpx.AsyncByteStream):
+        def __init__(self, b):
+            self.b = b
+
+        async def __aiter__(self):
+            yield self.b
+
+        async def aclose(self):
+            pass
+
+    def handler(req):
+        nonlocal calls
+        calls += 1
+        return Response(
+            200,
+            headers={
+                "Content-Length": str(len(body)),
+                "Last-Modified": email.utils.format_datetime(dt, usegmt=True),
+                "Date": email.utils.formatdate(t0 + skew, usegmt=True),  # origin ahead of us
+            },
+            stream=_Chunks(body),
+            request=req,
+        )
+
+    async with manager_cache.async_http_client() as client:
+        mt = httpx.MockTransport(handler)
+        setattr(client._transport, "transport" if hasattr(client._transport, "transport") else "_transport", mt)
+        client._transport.cache_rules = manager_cache.cache_rules
+
+        async with client.stream("GET", url) as r1:
+            await r1.aread()
+
+        # age = t0 - (t0 + skew) = -120. Before the clamp this raised out of the transport.
+        async with client.stream("GET", url) as r2:
+            assert r2.headers.get("x-cache") == "HIT" or r2.extensions.get("from_cache") is True
+            await r2.aread()
+            assert r1.content == r2.content
+
+    assert calls == 1  # served from cache: no second round-trip
+
+
+@pytest.mark.asyncio
+async def test_clamp_does_not_make_expired_entries_look_fresh(manager_cache: HttpxThrottleCache, tmp_path, monkeypatch):
+    """The negative that kills the tempting wrong fix.
+
+    Hard-coding `age = 0` also stops the crash — and silently makes every entry immortal.
+    Here the origin clock agrees with ours and the TTL genuinely elapses, so a positive
+    age must still be computed and the entry must expire. Passes before and after the
+    clamp; its job is to fail on the mutant.
+    """
+    calls = 0
+    url = "https://example.com/file.bin"
+    ttl = 1
+
+    manager_cache.cache_rules = {"example.com": {"/file.bin": ttl}}
+    dt = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=datetime.timezone.utc)
+    t0 = dt.timestamp()
+    monkeypatch.setattr(time, "time", lambda: t0)
+    body = b"abc"
+
+    class _Chunks(httpx.AsyncByteStream):
+        def __init__(self, b):
+            self.b = b
+
+        async def __aiter__(self):
+            yield self.b
+
+        async def aclose(self):
+            pass
+
+    def handler(req):
+        nonlocal calls
+        calls += 1
+        return Response(
+            200 if calls == 1 else 304,
+            headers={
+                "Content-Length": str(len(body)),
+                "Last-Modified": email.utils.format_datetime(dt, usegmt=True),
+                "Date": email.utils.formatdate(t0, usegmt=True),  # no skew
+            },
+            stream=_Chunks(body),
+            request=req,
+        )
+
+    async with manager_cache.async_http_client() as client:
+        mt = httpx.MockTransport(handler)
+        setattr(client._transport, "transport" if hasattr(client._transport, "transport") else "_transport", mt)
+        client._transport.cache_rules = manager_cache.cache_rules
+
+        async with client.stream("GET", url) as r1:
+            await r1.aread()
+
+        monkeypatch.setattr(time, "time", lambda: t0 + ttl + 2)  # genuinely past the TTL
+
+        async with client.stream("GET", url) as r2:
+            await r2.aread()
+
+    assert calls == 2  # expired, so it revalidated
