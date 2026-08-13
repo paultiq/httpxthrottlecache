@@ -115,18 +115,9 @@ class FileCache:
 
         age: int = round(time.time() - float(fetched))
         if age < 0:
-            # `fetched` is the ORIGIN's Date header (it becomes _TeeCore.atime), not our
-            # clock, so a machine running behind the origin reads a negative age. The
-            # entry is not corrupt: it was just downloaded, which makes 0 the truthful
-            # reading. Raising propagated out of the transport and killed the caller's
-            # request; treating it as stale instead would defeat the cache on every
-            # request for as long as the clock is off.
-            logger.warning(
-                "Cache entry for %s is dated %s seconds in the future; local clock is likely behind "
-                "the origin. Treating its age as 0.",
-                path,
-                -age,
-            )
+            # Per RFC 9111: apparent_age = max(0, response_time - date_value);
+            # Negative ages can occur due to a lagging local clock, log accordingly. 
+            logger.debug("Negative age (%s) detected: local clock may be behind origin (%s)", age, path)
             age = 0
         logger.info("file is %s seconds old, policy allows caching for up to %s", age, cached)
         return (age <= cached, p)
