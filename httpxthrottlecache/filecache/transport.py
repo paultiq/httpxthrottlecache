@@ -21,6 +21,9 @@ from ..controller import get_rule_for_request
 
 logger = logging.getLogger(__name__)
 
+# Held for the cache rule's TTL, like a 200.
+CACHED_REDIRECTS = frozenset({301, 302, 307, 308})
+
 
 class AlreadyLockedError(Exception):
     pass
@@ -121,6 +124,21 @@ class FileCache:
             age = 0
         logger.info("file is %s seconds old, policy allows caching for up to %s", age, cached)
         return (age <= cached, p)
+
+    def store_redirect(self, p: Path, status_code: int, location: str, date: Optional[str]) -> None:
+        """Store a redirect as an empty body plus its location."""
+        fetched = int(parsedate_to_datetime(date).timestamp()) if date else int(time.time())
+        lock = FileLock(str(p) + ".lock") if self.locking else None
+        if lock:
+            lock.acquire()
+        try:
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_bytes(b"")
+            meta = {"fetched": fetched, "origin_lm": None, "status": status_code, "location": location}
+            self._meta_path(p).write_text(json.dumps(meta))
+        finally:
+            if lock:
+                lock.release()
 
 
 class _TeeCore:
@@ -264,6 +282,10 @@ class CachingTransport(httpx.BaseTransport, httpx.AsyncBaseTransport):
         """
         meta = json.loads(path.with_suffix(path.suffix + ".meta").read_text())
         date = formatdate(timeval=meta["fetched"], usegmt=True)
+        if meta.get("status") in CACHED_REDIRECTS:
+            headers = [("x-cache", "HIT"), ("location", meta["location"]), ("Date", date), ("content-length", "0")]
+            return httpx.Response(status_code=meta["status"], headers=headers, content=b"", request=req)
+
         last_modified = formatdate(timeval=meta["origin_lm"], usegmt=True)
 
         ct = meta.get("headers", {}).get("content-type", "application/octet-stream")
@@ -305,6 +327,11 @@ class CachingTransport(httpx.BaseTransport, httpx.AsyncBaseTransport):
         path: Path,
         tee_factory: Callable[..., Union[httpx.SyncByteStream, httpx.AsyncByteStream]],
     ):
+        location = net.headers.get("location")
+        if net.status_code in CACHED_REDIRECTS and location:
+            self._cache.store_redirect(path, net.status_code, location, net.headers.get("Date"))
+            return net
+
         if net.status_code != 200:
             return net
 
