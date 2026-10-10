@@ -7,6 +7,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import time
 from email.utils import formatdate, parsedate_to_datetime
 from pathlib import Path
@@ -23,6 +24,8 @@ logger = logging.getLogger(__name__)
 
 # Held for the cache rule's TTL, like a 200.
 CACHED_REDIRECTS = frozenset({301, 302, 307, 308})
+
+MAX_READABLE_NAME = 120
 
 
 class AlreadyLockedError(Exception):
@@ -91,7 +94,9 @@ class FileCache:
         if query:
             name += "-" + unquote(query).replace("&", "-").replace("=", "-")
         digest = hashlib.blake2b(f"{path}?{query}".encode(), digest_size=4).hexdigest()
-        return self.cache_dir / site / (quote(name, safe="._-~") + "-" + digest)
+        # filesystem name limits; digest disambiguates
+        readable = re.sub(r"%[0-9A-Fa-f]?$", "", quote(name, safe="._-~")[:MAX_READABLE_NAME])
+        return self.cache_dir / site / (readable + "-" + digest)
 
     def get_if_fresh(
         self, host: str, path: str, query: str, cache_rules: dict[str, dict[str, Union[bool, int]]]
