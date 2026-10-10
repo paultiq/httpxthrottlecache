@@ -37,10 +37,15 @@ httpx = [
   "httpx==0.28.1",
 ]
 
+primp = [
+  "primp>=2.0.1",
+]
+
 [dependency-groups]
 dev = [
   "h2>=4.3.0",
   "pre-commit-uv>=4.1.4",
+  "primp>=2.0.1; platform_python_implementation == 'CPython'",
   "pylint>=3.3.8",
   "pytest>=8.4.1",
   "pytest-asyncio>=1.1.0",

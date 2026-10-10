@@ -52,7 +52,16 @@ class HttpxThrottleCache:
 
     proxy: Optional[ProxyTypes] = None
 
+    # "primp" sends requests through primp.Client / primp.AsyncClient built with primp_params
+    backend: Literal["httpx", "primp"] = "httpx"
+    primp_params: dict[str, Any] = field(default_factory=lambda: {"impersonate": "firefox"})
+
     def __post_init__(self):
+        if self.backend not in ("httpx", "primp"):
+            raise ValueError(f"Unsupported backend: {self.backend}")
+        if self.backend == "primp" and importlib.util.find_spec("primp") is None:
+            raise ImportError("backend='primp' requires primp: install httpxthrottlecache[primp]")
+
         if self.cache_mode == "Hishel-File":
             logger.debug("Hishel-File is deprecated and will be removed, due to breaking API changes")
             self.cache_mode = "FileCache"
@@ -238,7 +247,16 @@ class HttpxThrottleCache:
 
         Caching Transport (if enabled) => Rate Limiting Transport (if enabled) => httpx.HTTPTransport
         """
-        if self.rate_limiter_enabled:
+        if self.backend == "primp":
+            from .primp_transport import PrimpTransport
+
+            next_transport = PrimpTransport(
+                self.rate_limiter if self.rate_limiter_enabled else None,
+                self.primp_params,
+                proxy=httpx_transport_params["proxy"],
+                verify=httpx_transport_params["verify"],
+            )
+        elif self.rate_limiter_enabled:
             assert self.rate_limiter is not None
             next_transport = RateLimitingTransport(self.rate_limiter, **httpx_transport_params)
         else:
@@ -262,7 +280,16 @@ class HttpxThrottleCache:
         Caching Transport (if enabled) => Rate Limiting Transport (if enabled) => httpx.HTTPTransport
         """
 
-        if self.rate_limiter_enabled:
+        if self.backend == "primp":
+            from .primp_transport import AsyncPrimpTransport
+
+            next_transport = AsyncPrimpTransport(
+                self.rate_limiter if self.rate_limiter_enabled else None,
+                self.primp_params,
+                proxy=httpx_transport_params["proxy"],
+                verify=httpx_transport_params["verify"],
+            )
+        elif self.rate_limiter_enabled:
             assert self.rate_limiter is not None
             next_transport = AsyncRateLimitingTransport(self.rate_limiter, **httpx_transport_params)
         else:

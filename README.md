@@ -50,10 +50,10 @@ This project provides four `cache_mode` options:
 Cache Rules are defined as a dictionary of site regular expressions to path regular expressions. 
 ```py
 {
-    'site_regex': {
-        'url_regex': duration,
-        'url_regex2': duration,
-        '.*': 3600, # cache all paths for this site for an hour
+    "site_regex": {
+        "url_regex": duration,
+        "url_regex2": duration,
+        ".*": 3600,  # cache all paths for this site for an hour
     }
 }
 ```
@@ -70,12 +70,13 @@ from httpxthrottlecache import HttpxThrottleCache
 
 url = "https://httpbingo.org/get"
 
-with HttpxThrottleCache(cache_mode="Hishel-File", 
-    cache_dir = "_cache", 
-    rate_limiter_enabled=True, 
-    request_per_sec_limit=10, 
-    user_agent="your user agent") as manager:
-
+with HttpxThrottleCache(
+    cache_mode="Hishel-File",
+    cache_dir="_cache",
+    rate_limiter_enabled=True,
+    request_per_sec_limit=10,
+    user_agent="your user agent",
+) as manager:
     # Single synchronous request
     with manager.http_client() as client:
         response = client.get(url)
@@ -114,20 +115,40 @@ with HttpxThrottleCache(cache_mode="Disabled") as mgr:
 
 ```py
 from httpxthrottlecache import HttpxThrottleCache
-import asyncio 
+import asynciosends
 
 url = "https://httpbingo.org/get"
-with HttpxThrottleCache(cache_mode="Hishel-File", 
-    cache_dir = "_cache", 
-    rate_limiter_enabled=True, 
-    request_per_sec_limit=10) as manager:
-
+with HttpxThrottleCache(
+    cache_mode="Hishel-File", cache_dir="_cache", rate_limiter_enabled=True, request_per_sec_limit=10
+) as manager:
     # Async request
     async with manager.async_http_client() as client:
         tasks = [client.get(url) for _ in range(2)]
         responses = await asyncio.gather(*tasks)
         print(responses)
 ```
+
+## Usage: primp backend
+
+For simulating web clients with browser TLS and HTTP/2 fingerprints, there's an optional backend: primp
+
+```sh
+pip install 'httpxthrottlecache[httpx2,primp]'
+```
+
+```py
+from httpxthrottlecache import HttpxThrottleCache
+
+mgr = HttpxThrottleCache(
+    cache_dir="_primp_cache",
+    backend="primp",
+    primp_params={"impersonate": "firefox", "impersonate_os": "windows"},
+)
+with mgr.http_client() as client:
+    response = client.get("https://httpbingo.org/get")
+```
+
+`primp_params` is passed to `primp.Client` / `primp.AsyncClient` and defaults to `{"impersonate": "firefox"}`. It is ignored unless `backend="primp"`.
 
 ## FileCache
 
