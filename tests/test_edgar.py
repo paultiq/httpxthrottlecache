@@ -159,7 +159,7 @@ async def test_file_async_nocache(manager_nocache: HttpxThrottleCache):
         end = time.perf_counter()
         
         assert min(responses) == 200 and max(responses) == 200
-        assert (end-start) > 2 and (end-start) < 6
+        assert 2 < (end-start) < 6
     
 def test_short_cache_edgar_url(manager_cache: HttpxThrottleCache):
     url = "https://www.sec.gov/files/company_tickers.json"
