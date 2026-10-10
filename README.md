@@ -8,11 +8,11 @@
 | httpxthrottlecache/\_compat.py            |       13 |        7 |     46% |     18-25 |
 | httpxthrottlecache/\_version.py           |        3 |        0 |    100% |           |
 | httpxthrottlecache/controller.py          |       21 |        0 |    100% |           |
-| httpxthrottlecache/filecache/transport.py |      245 |       16 |     93% |40-41, 44-49, 56-61, 257, 316 |
+| httpxthrottlecache/filecache/transport.py |      248 |       16 |     94% |43-44, 47-52, 59-64, 262, 321 |
 | httpxthrottlecache/httpxclientmanager.py  |      169 |       10 |     94% |66-67, 86, 96, 113, 158, 179-180, 272, 305 |
 | httpxthrottlecache/primp\_transport.py    |       84 |        1 |     99% |        34 |
 | httpxthrottlecache/ratelimiter.py         |       28 |        0 |    100% |           |
-| **TOTAL**                                 |  **568** |   **34** | **94%** |           |
+| **TOTAL**                                 |  **571** |   **34** | **94%** |           |
 
 
 ## Setup coverage badge
