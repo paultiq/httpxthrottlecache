@@ -27,8 +27,6 @@ jobs:
         uses: astral-sh/setup-uv@v10.3.0
         with:
           enable-cache: true
-      - uses: actions/setup-python@v7.0.0
-        with:
           python-version: "3.10"
       - name: Install dependencies
         run: uv sync --extra httpx2
@@ -44,4 +42,4 @@ jobs:
           uv run pytest tests/extras/test_edgartools.py tests/extras/test_http2.py
       - name: Upload package to PyPI
         if: startsWith(github.ref, 'refs/tags/v')
-        uses: pypa/gh-action-pypi-publish@release/v1
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
