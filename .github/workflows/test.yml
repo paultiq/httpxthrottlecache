@@ -30,8 +30,8 @@ jobs:
         # full matrix runs the recommended httpx2 extra;
         # the httpx extra is tested at the oldest & latest python versions
         - { os: ubuntu-latest, python-version: "3.10", http-extra: httpx2 }
-        - { os: ubuntu-latest, python-version: "3.10", http-extra: httpx }
         - { os: ubuntu-latest, python-version: *latest, http-extra: httpx2 }
+        - { os: ubuntu-latest, python-version: *latest, http-extra: httpx }
         - { os: ubuntu-latest, python-version: "3.15t", http-extra: httpx2 }
         - { os: ubuntu-latest, python-version: "pypy3.11", http-extra: httpx2 }
         - { os: windows-latest, python-version: *latest, http-extra: httpx2 }
@@ -44,10 +44,6 @@ jobs:
         uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v7.0.0
-        with:
-          python-version: ${{ matrix.python-version }}
-          allow-prereleases: true
       - name: Install uv
         uses: astral-sh/setup-uv@v10.3.0
         with:
