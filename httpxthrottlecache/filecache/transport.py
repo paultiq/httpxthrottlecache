@@ -387,6 +387,9 @@ class CachingTransport(httpx.BaseTransport, httpx.AsyncBaseTransport):
         net = self.transport.handle_request(request)
         if net.status_code == 304:
             logger.info("304 for %s", request)
+            # Drain the network response
+            net.read()
+            net.close()
             assert path is not None  # must be true
             return self._cache_hit_response(request, path, status_code=304)
 
@@ -410,6 +413,9 @@ class CachingTransport(httpx.BaseTransport, httpx.AsyncBaseTransport):
 
         net: httpx.Response = await transport.handle_async_request(request)
         if net.status_code == 304:
+            # Drain the network response
+            await net.aread()
+            await net.aclose()
             assert path is not None  # must be true
             logger.info("304 for %s", request)
             return self._cache_hit_response(request, path, status_code=304)
