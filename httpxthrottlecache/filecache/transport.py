@@ -28,6 +28,13 @@ CACHED_REDIRECTS = frozenset({301, 302, 307, 308})
 MAX_READABLE_NAME = 120
 
 
+def _points_to_itself(request: httpx.Request, location: str) -> bool:
+    """Redirect target shares the cache key."""
+    # keys omit scheme: http->https collides
+    target = request.url.join(location)
+    return (target.host, target.path, target.query) == (request.url.host, request.url.path, request.url.query)
+
+
 class AlreadyLockedError(Exception):
     pass
 
@@ -333,7 +340,7 @@ class CachingTransport(httpx.BaseTransport, httpx.AsyncBaseTransport):
         tee_factory: Callable[..., Union[httpx.SyncByteStream, httpx.AsyncByteStream]],
     ):
         location = net.headers.get("location")
-        if net.status_code in CACHED_REDIRECTS and location:
+        if net.status_code in CACHED_REDIRECTS and location and not _points_to_itself(req, location):
             self._cache.store_redirect(path, net.status_code, location, net.headers.get("Date"))
             return net
 
@@ -365,6 +372,10 @@ class CachingTransport(httpx.BaseTransport, httpx.AsyncBaseTransport):
 
         if path:
             if fresh:
+                meta = json.loads(path.with_suffix(path.suffix + ".meta").read_text())
+                if meta.get("status") in CACHED_REDIRECTS and _points_to_itself(request, meta.get("location", "")):
+                    logger.info("Ignoring self-redirect cached for %s", request.url)
+                    return None, None
                 return self._cache_hit_response(request, path), path
             else:
                 lm = json.loads(path.with_suffix(path.suffix + ".meta").read_text()).get("origin_lm")
