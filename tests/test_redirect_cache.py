@@ -88,6 +88,41 @@ def test_307_and_308_are_cached(tmp_path, status):
     assert len(calls) == 1
 
 
+def test_scheme_upgrade_redirect_does_not_loop(tmp_path):
+    """http->https shares a cache key, so caching it would redirect https to itself."""
+    calls = []
+
+    def handler(req):
+        calls.append(str(req.url))
+        date = email.utils.formatdate(time.time(), usegmt=True)
+        if req.url.scheme == "http":
+            return httpx.Response(301, headers={"Location": str(req.url.copy_with(scheme="https")), "Date": date}, request=req)
+        return httpx.Response(200, headers={"Date": date}, stream=httpx.ByteStream(b"body"), request=req)
+
+    transport = CachingTransport(tmp_path, RULES, transport=httpx.MockTransport(handler))
+    with httpx.Client(transport=transport, max_redirects=5) as c:
+        assert c.get("http://a.test/feed", follow_redirects=True).content == b"body"
+        assert c.get("https://a.test/feed", follow_redirects=True).content == b"body"
+        assert c.get("http://a.test/feed", follow_redirects=True).content == b"body"
+
+
+def test_cached_self_redirect_is_ignored(tmp_path):
+    """A self-pointing redirect already on disk is treated as a miss."""
+    calls = []
+
+    def handler(req):
+        calls.append(str(req.url))
+        date = email.utils.formatdate(time.time(), usegmt=True)
+        return httpx.Response(200, headers={"Date": date}, stream=httpx.ByteStream(b"body"), request=req)
+
+    transport = CachingTransport(tmp_path, RULES, transport=httpx.MockTransport(handler))
+    p = transport._cache.to_path("a.test", "/feed", "")
+    transport._cache.store_redirect(p, 301, "https://a.test/feed", None)
+    with httpx.Client(transport=transport, max_redirects=5) as c:
+        assert c.get("https://a.test/feed", follow_redirects=True).content == b"body"
+    assert calls == ["https://a.test/feed"]
+
+
 @pytest.mark.asyncio
 async def test_301_is_served_from_cache_async(tmp_path):
     calls = []
